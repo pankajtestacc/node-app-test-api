@@ -9,7 +9,11 @@ const request = require("request");
 const router = express.Router();
 
 mongoose
-  .connect("mongodb://localhost:27017/payments")
+  .connect(
+    process.env.NODE_ENV === "development"
+      ? "mongodb://localhost:27017/payments"
+      : process.env.MONGODB_URL
+  )
   .then(() => console.log("DB connected"))
   .catch((err) => console.log("Failed to connect DB"));
 
@@ -123,7 +127,7 @@ router.get("/:paymentId", (req, res) => {
         error: "No order found",
       });
 
-    res.status(200).json(data)
+    res.status(200).json(data);
 
     // request(
     //   `https://${process.env.RZP_KEY_ID}:${process.env.RZP_SECRET_KEY}@api.razorpay.com/v1/payments/${req.params.paymentId}`,
