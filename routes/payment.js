@@ -10,7 +10,7 @@ const router = express.Router();
 
 mongoose
   .connect(
-    process.env.NODE_ENV === "development"
+    process.env.NODE_ENV !== "production"
       ? "mongodb://localhost:27017/payments"
       : process.env.MONGODB_URL
   )
@@ -105,10 +105,11 @@ router.post("/success", async (req, res) => {
               return res.status(400).json({
                 error: "Not able to save in DB",
               });
-            // res.redirect(
-            //   `${process.env.FRONTEND_URL}/payment/status/${razorpayPaymentId}`
-            // );
-            res.send("hello");
+            res.json({
+              customerName: customerName,
+              companyOrderID: companyOrderID,
+              razorpayPaymentId: razorpayPaymentId,
+            });
           });
         }
       }
@@ -128,16 +129,6 @@ router.get("/:paymentId", (req, res) => {
       });
 
     res.status(200).json(data);
-
-    // request(
-    //   `https://${process.env.RZP_KEY_ID}:${process.env.RZP_SECRET_KEY}@api.razorpay.com/v1/payments/${req.params.paymentId}`,
-    //   function (error, response, body) {
-    //     if (body) {
-    //       const result = JSON.parse(body);
-    //       res.status(200).json(result);
-    //     }
-    //   }
-    // );
   });
 });
 // get the payment details end
