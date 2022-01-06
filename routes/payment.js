@@ -157,7 +157,7 @@ router.post("/test", (req, res) => {
   order.save((err, data) => {
     if (err)
       return res.status(400).json({
-        error: "Not able to save in DB",
+        error: err,
       });
     res.json({
       customerName: customerName,
