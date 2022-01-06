@@ -9,11 +9,7 @@ const request = require("request");
 const router = express.Router();
 
 mongoose
-  .connect(
-    process.env.NODE_ENV !== "production"
-      ? "mongodb://localhost:27017/payments"
-      : process.env.MONGODB_URL
-  )
+  .connect(process.env.MONGODB_URL || "mongodb://localhost:27017/payments")
   .then(() => console.log("DB connected"))
   .catch((err) => console.log("Failed to connect DB"));
 
