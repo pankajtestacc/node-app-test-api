@@ -125,4 +125,46 @@ router.get("/:id", (req, res) => {
 });
 // get the payment details end
 
+// Test route
+router.post("/test", (req, res) => {
+  const {
+    companyOrderID,
+    createrUsername,
+    customerName,
+    customerEmail,
+    customerMobileNo,
+    razorpayPaymentId,
+    razorpayOrderId,
+    razorpaySignature,
+  } = req.body;
+
+  const order = new orderSchema({
+    _id: companyOrderID,
+    creatorInfo: {
+      createrUsername,
+    },
+    customerInfo: {
+      customerName,
+      customerEmail,
+      customerMobileNo,
+    },
+    orders: {
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+    },
+  });
+  order.save((err, data) => {
+    if (err)
+      return res.status(400).json({
+        error: "Not able to save in DB",
+      });
+    res.json({
+      customerName: customerName,
+      companyOrderID: companyOrderID,
+      razorpayPaymentId: razorpayPaymentId,
+    });
+  });
+});
+
 module.exports = router;
