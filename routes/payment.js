@@ -58,8 +58,6 @@ router.post("/success", async (req, res) => {
       customerName,
       customerEmail,
       customerMobileNo,
-      question,
-      description,
       orderCreationId,
       razorpayPaymentId,
       razorpayOrderId,
@@ -90,8 +88,6 @@ router.post("/success", async (req, res) => {
               customerName,
               customerEmail,
               customerMobileNo,
-              question,
-              description,
             },
             orders: {
               result,
@@ -121,8 +117,8 @@ router.post("/success", async (req, res) => {
 // end Verify the payment getting sighnature ID
 
 // get the payment details start
-router.get("/:paymentId", (req, res) => {
-  orderSchema.findById(req.params.paymentId).exec((err, data) => {
+router.get("/:id", (req, res) => {
+  orderSchema.findById(req.params.id).exec((err, data) => {
     if (err || data == null)
       return res.json({
         error: "No order found",
