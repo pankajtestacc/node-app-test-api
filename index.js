@@ -39,6 +39,7 @@ app.get("/", (req, res) => {
   });
 });
 
+// upload image to server
 app.post(
   "/api/save_image",
   uploads.single("image"),
