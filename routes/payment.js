@@ -3,15 +3,9 @@ const express = require("express");
 const Razorpay = require("razorpay");
 const uniqid = require("uniqid");
 const crypto = require("crypto");
-const mongoose = require("mongoose");
-const orderSchema = require("../db/orderSchema");
 const request = require("request");
+const { default: axios } = require("axios");
 const router = express.Router();
-
-mongoose
-  .connect(process.env.MONGODB_URL || "mongodb://localhost:27017/payments")
-  .then(() => console.log("DB connected"))
-  .catch((err) => console.log("Failed to connect DB"));
 
 // initializ the RazorPay and create orders start
 const instance = new Razorpay({
@@ -20,7 +14,7 @@ const instance = new Razorpay({
 });
 router.post("/orders", async (req, res) => {
   // get amount from frontend
-  const { amount } = req.body;
+  const { amount, customerToken, getOrderID } = req.body;
   try {
     const options = {
       amount: amount, //amount is the smallest currency unit
@@ -29,13 +23,47 @@ router.post("/orders", async (req, res) => {
       payment_capture: 1,
     };
 
-    await instance.orders.create(options, (err, order) => {
+    // create order
+    await instance.orders.create(options, async (err, order) => {
       if (err) {
         return res.status(500).json({
           error: err,
         });
       }
-      return res.status(200).json(order);
+
+      // Update payment Info API start:
+      const data = {
+        orderId: getOrderID,
+        txnId: order.id,
+        amount: amount,
+        receipt: options.receipt,
+        paymentProvider: "razorPay",
+      };
+
+      await axios({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Authorization": `Bearer ${customerToken}`,
+        },
+        url: `https://api.${
+          process.env.NODE_ENV === "development"
+            ? process.env.DEV_API
+            : process.env.PROD_API
+        }.me/rest/order/update/payment-info`,
+        data: data,
+      })
+        .then((data) => {
+          if (data) {
+            res.status(200).json(order);
+          } else {
+            return res.status(500).json({ error: "Failed to save" });
+          }
+        })
+        .catch((error) => {
+          res.status(400).json({ error: "Something wrong" });
+        });
+      // Update payment Info API end:
     });
   } catch (err) {
     res.status(500).send(err);
@@ -49,11 +77,10 @@ router.post("/success", async (req, res) => {
   try {
     // getting the details back from frontend
     const {
-      companyOrderID,
-      createrUsername,
-      customerName,
-      customerEmail,
-      customerMobileNo,
+      customerToken,
+      getOrderID,
+      amount,
+      receiptId,
       orderCreationId,
       razorpayPaymentId,
       razorpayOrderId,
@@ -70,101 +97,58 @@ router.post("/success", async (req, res) => {
 
     // THE PAYMENT IS LEGIT & VERIFIED
     // YOU CAN SAVE THE DETAILS IN YOUR DATABASE IF YOU WANT
-    request(
-      `https://${process.env.RZP_KEY_ID}:${process.env.RZP_SECRET_KEY}@api.razorpay.com/v1/payments/${razorpayPaymentId}`,
-      function (error, response, body) {
-        if (body) {
-          const result = JSON.parse(body);
-          const order = new orderSchema({
-            _id: companyOrderID,
-            creatorInfo: {
-              createrUsername,
-            },
-            customerInfo: {
-              customerName,
-              customerEmail,
-              customerMobileNo,
-            },
-            orders: {
-              result,
-              razorpayOrderId,
-              razorpayPaymentId,
-              razorpaySignature,
-            },
-          });
-          order.save((err, data) => {
-            if (err)
-              return res.status(400).json({
-                error: "Not able to save in DB",
-              });
-            res.json({
-              customerName: customerName,
-              companyOrderID: companyOrderID,
-              razorpayPaymentId: razorpayPaymentId,
-            });
-          });
-        }
-      }
-    );
+    const data = {
+      orderId: getOrderID,
+      txnId: orderCreationId,
+      amount: amount,
+      receipt: receiptId,
+      paymentProvider: "razorPay",
+      currency: "Rupee",
+      paymentCreatedOn: "2012-04-23T18:25:43.511Z",
+      extPaymentId: razorpayPaymentId,
+      paymentCapture: amount,
+      paymentSuccess: true,
+    };
+
+    await axios({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Authorization": `Bearer ${customerToken}`,
+      },
+      url: `https://api.${
+        process.env.NODE_ENV === "development"
+          ? process.env.DEV_API
+          : process.env.PROD_API
+      }.me/rest/order/update/payment-info`,
+      data: data,
+    })
+      .then((data) => {
+        res.status(200).json(data.data);
+      })
+      .catch((error) => {
+        res.status(400).json({ error: `Server error ${error}` });
+      });
   } catch (error) {
     res.status(500).send(error);
   }
 });
 // end Verify the payment getting sighnature ID
 
-// get the payment details start
-router.get("/:id", (req, res) => {
-  orderSchema.findById(req.params.id).exec((err, data) => {
-    if (err || data == null)
-      return res.json({
-        error: "No order found",
+// test
+router.get("/test", async (req, res) => {
+  await axios
+    .get(
+      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false"
+    )
+    .then((data) => {
+      res.json(data.data);
+    })
+    .catch((error) => {
+      res.status(400).json({
+        error: error,
       });
-
-    res.status(200).json(data);
-  });
-});
-// get the payment details end
-
-// Test route
-router.post("/test", (req, res) => {
-  const {
-    companyOrderID,
-    createrUsername,
-    customerName,
-    customerEmail,
-    customerMobileNo,
-    razorpayPaymentId,
-    razorpayOrderId,
-    razorpaySignature,
-  } = req.body;
-
-  const order = new orderSchema({
-    _id: companyOrderID,
-    creatorInfo: {
-      createrUsername,
-    },
-    customerInfo: {
-      customerName,
-      customerEmail,
-      customerMobileNo,
-    },
-    orders: {
-      razorpayOrderId,
-      razorpayPaymentId,
-      razorpaySignature,
-    },
-  });
-  order.save((err, data) => {
-    if (err)
-      return res.status(400).json({
-        error: err,
-      });
-    res.json({
-      customerName: customerName,
-      companyOrderID: companyOrderID,
-      razorpayPaymentId: razorpayPaymentId,
     });
-  });
 });
 
 module.exports = router;
