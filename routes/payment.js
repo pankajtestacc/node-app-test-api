@@ -3,7 +3,6 @@ const express = require("express");
 const Razorpay = require("razorpay");
 const uniqid = require("uniqid");
 const crypto = require("crypto");
-const request = require("request");
 const { default: axios } = require("axios");
 const router = express.Router();
 
@@ -23,48 +22,75 @@ router.post("/orders", async (req, res) => {
       payment_capture: 1,
     };
 
-    // create order
-    await instance.orders.create(options, async (err, order) => {
-      if (err) {
-        return res.status(500).json({
-          error: err,
-        });
-      }
-
-      // Update payment Info API start:
-      const data = {
+    // check for the order start
+    await axios({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Authorization": `Bearer ${customerToken}`,
+      },
+      url: `https://api.${
+        process.env.NODE_ENV === "development"
+          ? process.env.DEV_API
+          : process.env.PROD_API
+      }.me/rest/order/get-order`,
+      data: {
         orderId: getOrderID,
-        txnId: order.id,
-        amount: amount,
-        receipt: options.receipt,
-        paymentProvider: "razorPay",
-      };
+      },
+    })
+      .then(async (data) => {
+        // check for orderID
+        if (data.data.orderDto.orderId) {
+          // create order
+          await instance.orders.create(options, async (err, order) => {
+            if (err) {
+              return res.status(500).json({
+                error: err,
+              });
+            }
 
-      await axios({
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Authorization": `Bearer ${customerToken}`,
-        },
-        url: `https://api.${
-          process.env.NODE_ENV === "development"
-            ? process.env.DEV_API
-            : process.env.PROD_API
-        }.me/rest/order/update/payment-info`,
-        data: data,
+            // Update payment Info API start:
+            const data = {
+              orderId: getOrderID,
+              txnId: order.id,
+              amount: amount,
+              receipt: options.receipt,
+              paymentProvider: "razorPay",
+            };
+
+            await axios({
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Authorization": `Bearer ${customerToken}`,
+              },
+              url: `https://api.${
+                process.env.NODE_ENV === "development"
+                  ? process.env.DEV_API
+                  : process.env.PROD_API
+              }.me/rest/order/update/payment-info`,
+              data: data,
+            })
+              .then((data) => {
+                if (data) {
+                  res.status(200).json(order);
+                } else {
+                  return res.status(500).json({ error: "Failed to save" });
+                }
+              })
+              .catch((error) => {
+                res.status(400).json({ error: `${error}` });
+              });
+            // Update payment Info API end:
+          });
+        } else {
+          return console.log("Order not created");
+        }
       })
-        .then((data) => {
-          if (data) {
-            res.status(200).json(order);
-          } else {
-            return res.status(500).json({ error: "Failed to save" });
-          }
-        })
-        .catch((error) => {
-          res.status(400).json({ error: "Something wrong" });
-        });
-      // Update payment Info API end:
-    });
+      .catch((error) => {
+        console.log(error);
+      });
+    // check for the order end
   } catch (err) {
     res.status(500).send(err);
   }
@@ -137,17 +163,33 @@ router.post("/success", async (req, res) => {
 
 // test
 router.get("/test", async (req, res) => {
-  await axios
-    .get(
-      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false"
-    )
+  await axios({
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Authorization":
+        "Bearer eyJhbGciOiJSUzI1NiJ9.eyJwcml2aWxlZ2VzIjoiTE9HSU5fUFJJVklMRUdFLFJFR0lTVEVSX1BSSVZJTEVHRSIsInN1YiI6IlpMc0VMczA5NDRrbDdUSWciLCJtYWlsIjoicGFuazQxMzlAZ21haWwuY29tIiwidW5hbWUiOiJrdW1hcnBhbmthaiIsImRvbWFpbiI6ImN1c3RvbWVyIiwiaXNzIjoiaHR0cDovL3N0YXJiaW8uY29tIiwiZXhwIjoxNjQyMTg3OTY4LCJpYXQiOjE2NDIxODE5NjgsImp0aSI6ImMyYmEzZGFlLTIzM2YtNDZjMC1iZTljLWRlNjgxZmRhNmM3ZiJ9.YfctzIyt7ldeCgGbs6QMEnIg_bZ3CvoJb_WNMvWlLmDFn9hTLQE_xZWPKoZZwVgsumzO1COqezpCIc6C9wlaS4ZXKZqOsL9-4huYwxtSxD1_MLzHsWT2CecIt1kPtUZ6aylzdhMXRkM0xO0fIZzAHtUEX-hREM4V0x7DI7wHQfXD2RNDsdwCkHpC27c9aO96prOrurgNurIpb66qjOmJW59tN8LXewS-dKdZ8kfrxtPZaHwTFKxM7Rvd2Z_j4PRqKjSaR-lNjbGIlbRMy8hoYEbCrLfWyA27W9rpSwcQuKorLdsFoTJnun7DW-5ZTgpWxrzsWYJi-P7gNhKfWsZ_PA",
+    },
+    url: `https://api.${
+      process.env.NODE_ENV === "development"
+        ? process.env.DEV_API
+        : process.env.PROD_API
+    }.me/rest/order/get-order`,
+    data: {
+      orderId: "202201081250213401312",
+    },
+  })
     .then((data) => {
-      res.json(data.data);
+      // check for orderID
+      if (data.data.orderDto.orderId) {
+        res.status(200).json(data.data);
+        console.log(data.data);
+      } else {
+        return console.log("Order not created");
+      }
     })
     .catch((error) => {
-      res.status(400).json({
-        error: error,
-      });
+      console.log(error);
     });
 });
 
