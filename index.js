@@ -19,7 +19,7 @@ app.get("/", (req, res) => {
 
 // upload image to server
 app.post(
-  "/api/save_image",
+  "/rest/api/save_image",
   uploads.single("image"),
   urlencodeParse,
   (req, res) => {
@@ -32,6 +32,6 @@ app.post(
 );
 
 // route included
-app.use("/payment", payment);
+app.use("/rest/payment", payment);
 
 app.listen(port, () => console.log(`server started on port ${port}`));

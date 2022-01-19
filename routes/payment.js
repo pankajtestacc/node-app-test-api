@@ -11,8 +11,9 @@ const instance = new Razorpay({
   key_id: process.env.RZP_KEY_ID,
   key_secret: process.env.RZP_SECRET_KEY,
 });
+
+// get amount from frontend
 router.post("/orders", async (req, res) => {
-  // get amount from frontend
   const { amount, customerToken, getOrderID } = req.body;
   try {
     const options = {
