@@ -31,7 +31,7 @@ app.post(
   }
 );
 
-// route included
-app.use("/payment", payment);
+// route included for payment
+app.use("/rest/payment", payment);
 
 app.listen(port, () => console.log(`server started on port ${port}`));
