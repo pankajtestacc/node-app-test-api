@@ -17,7 +17,7 @@ router.post("/orders", async (req, res) => {
   const { amount, customerToken, getOrderID } = req.body;
   try {
     const options = {
-      amount: amount, //amount is the smallest currency unit
+      amount: amount, //amount is the smallest currency unit (Paise)
       currency: "INR",
       receipt: uniqid(),
       payment_capture: 1,
@@ -54,7 +54,7 @@ router.post("/orders", async (req, res) => {
             const data = {
               orderId: getOrderID,
               txnId: order.id,
-              amount: amount,
+              amount: amount / 100, // changed it into Rupees
               receipt: options.receipt,
               paymentProvider: "razorPay",
             };
