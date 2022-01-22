@@ -131,7 +131,7 @@ router.post("/success", async (req, res) => {
       receipt: receiptId,
       paymentProvider: "razorPay",
       currency: "Rupee",
-      paymentCreatedOn: "2012-04-23T18:25:43.511Z",
+      paymentCreatedOn: new Date().toJSON().toString(),
       extPaymentId: razorpayPaymentId,
       paymentCapture: amount,
       paymentSuccess: true,
