@@ -85,11 +85,11 @@ router.post("/orders", async (req, res) => {
             // Update payment Info API end:
           });
         } else {
-          return console.log("Order not created");
+          return res.status(401).json({ err: "Order not created" });
         }
       })
       .catch((error) => {
-        console.log(error);
+        return res.status(504).send(error)
       });
     // check for the order end
   } catch (err) {
